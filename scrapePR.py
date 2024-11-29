@@ -29,10 +29,10 @@ base_url = "https://www.prnewswire.com/news-releases/news-releases-list/"
 current_page_file = "current_page_count.txt"
 progress_file = "progress.json"
 
-month = "10"
+month = "07"
 year = "2024"
-hour = "17"
-day = "01"
+hour = "23"
+day = "31"
 
 
 # Load the current page count or start from the first page
