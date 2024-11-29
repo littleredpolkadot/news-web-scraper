@@ -1,3 +1,4 @@
+import dropbox
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -11,6 +12,10 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 
+# Set up Dropbox client
+ACCESS_TOKEN = 'sl.CBmVuZEVtIaLJ-dR-ZJXVtTZMvVYi7zchofo60TfXHPTeFZUgqLC_m4DymHrMD7MR3FXuHHcJT8TsY3qHl9rpwHuuYamm_m0voUZNqKGkGEXi3K4rO0_1YrVGVef-a24jwXbxBy8Kfj_'  # Replace with your token
+dbx = dropbox.Dropbox(ACCESS_TOKEN)
+
 # Set up Chrome options
 options = webdriver.ChromeOptions()
 options.add_argument("--disable-extensions")
@@ -18,9 +23,6 @@ options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=options)
-
-save_folder = "articles_PRNewsWire"
-os.makedirs(save_folder, exist_ok=True)
 
 # Starting URL
 base_url = "https://www.prnewswire.com/news-releases/news-releases-list/"
@@ -70,9 +72,7 @@ def fetch_article_details(link):
                     if (current_count == 102):
                         found_header_and_container = main_content.find('header', class_='container release-header')
                         third_row = found_header_and_container.find_all('div', class_='row')[3]
-                        #print(f"FOUND THIRD ROW: {third_row}")
                         date = third_row.find("div", class_="col-lg-8 col-md-8 col-sm-7 swaping-class-left").find("p", class_="mb-no").get_text()
-                        #print(f"ARTICLE DATE: {date}")
                         dt = datetime.strptime(date.replace(" ET", ""), "%b %d, %Y, %H:%M")
 
                         dt_plus_one_hour = dt + timedelta(hours=1)
@@ -81,10 +81,6 @@ def fetch_article_details(link):
                         day = dt_plus_one_hour.strftime("%d")   
                         year = dt_plus_one_hour.strftime("%Y")  
                         hour = dt_plus_one_hour.strftime("%H") 
-
-
-                        #print(f"Month: {month}, Day: {day}, Year: {year}, Hour: {hour}")
-
 
 
                     for script in main_content(['script', 'style']):
@@ -96,16 +92,15 @@ def fetch_article_details(link):
                     if len(found_keywords) >= 2:
                         title = link.split('/')[-1]  # Fallback title (can be adjusted)
                         safe_title = re.sub(r'[<>:"/\\|?*]', '_', title)  # Remove invalid characters
-                        file_path = os.path.join(save_folder, f"{safe_title}.txt")
+                        dropbox_path = f"/{safe_title}.txt"  # Path in Dropbox
 
-                        # Try saving the article
+                        # Try uploading the article to Dropbox
                         try:
-                            with open(file_path, "w", encoding="utf-8") as f:
-                                f.write(formatted_text)
-                            print(f"Saved article: {safe_title}")
-                            return link  # Return the link if the article was saved successfully
+                            dbx.files_upload(formatted_text.encode('utf-8'), dropbox_path, mode=dropbox.files.WriteMode.overwrite)
+                            print(f"Uploaded article to Dropbox: {safe_title}")
+                            return link  # Return the link if the article was uploaded successfully
                         except Exception as e:
-                            print(f"Failed to save {safe_title}: {e}")
+                            print(f"Failed to upload {safe_title} to Dropbox: {e}")
                             append_failed_link(link)
                             return None
                 else:
